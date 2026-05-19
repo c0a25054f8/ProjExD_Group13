@@ -8,6 +8,8 @@ import pygame as pg
 
 WIDTH = 1100  # ゲームウィンドウの幅
 HEIGHT = 650  # ゲームウィンドウの高さ
+backgroundImg = ["fig/pg_bg.jpg","fig/pg_bg2.jpg","fig/pg_bg3.jpg","fig/pg_bg4.jpg","fig/pg_bg5.jpg"] #1,2,3,4,5
+
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -104,6 +106,27 @@ class Bird(pg.sprite.Sprite):
                 self.image = self.base_image
 
         screen.blit(self.image, self.rect)
+
+
+class Item(pg.sprite.Sprite):
+    """
+    回復アイテムに関するクラス
+    """
+    def __init__(self):
+        super().__init__()
+        self.image = pg.Surface((32, 32), pg.SRCALPHA)
+        pg.draw.circle(self.image, (255, 80, 80), (16, 16), 16)
+        pg.draw.circle(self.image, (255, 255, 255), (16, 16), 12)
+        pg.draw.rect(self.image, (255, 80, 80), (13, 7, 6, 18))
+        pg.draw.rect(self.image, (255, 80, 80), (7, 13, 18, 6))
+        self.rect = self.image.get_rect()
+        self.rect.center = WIDTH + 40, random.randint(80, HEIGHT - 80)
+        self.speed = random.randint(3, 6)
+
+    def update(self):
+        self.rect.move_ip(-self.speed, 0)
+        if self.rect.right < 0:
+            self.kill()
         
 
 class Bomb(pg.sprite.Sprite):
@@ -246,41 +269,38 @@ class Enemy(pg.sprite.Sprite):
         super().__init__()
         self.image = pg.transform.rotozoom(random.choice(__class__.imgs), 0, 0.8)
         self.rect = self.image.get_rect()
-        self.rect.center = random.randint(0, WIDTH), 0
-        self.vx, self.vy = 0, +6
-        self.bound = random.randint(50, HEIGHT//2)  # 停止位置
-        self.state = "down"  # 降下状態or停止状態
+        self.rect.center = WIDTH + self.rect.width // 2, random.randint(50, HEIGHT - 150)
+        self.vx, self.vy = -6, 0
+        self.bound = random.randint(WIDTH // 2, WIDTH - 150)  # 停止位置
+        self.state = "left"  # 左移動状態or停止状態
         self.interval = random.randint(50, 300)  # 爆弾投下インターバル
+        self.hp = 1
 
     def update(self):
         """
-        敵機を速度ベクトルself.vyに基づき移動（降下）させる
-        ランダムに決めた停止位置_boundまで降下したら，_stateを停止状態に変更する
+        敵機を速度ベクトルself.vxに基づき移動（左移動）させる
+        ランダムに決めた停止位置_boundまで左移動したら，_stateを停止状態に変更する
         引数 screen：画面Surface
         """
-        if self.rect.centery > self.bound:
-            self.vy = 0
+        if self.rect.centerx < self.bound:
+            self.vx = 0
             self.state = "stop"
         self.rect.move_ip(self.vx, self.vy)
 
-class EMP:
-    def __init__(self, emys: pg.sprite.Sprite, bombs: pg.sprite.Sprite, screen: pg.Surface):
-        for emy in emys:
-            emy.interval = math.inf # 爆弾投下不能
-            emy.image = pg.transform.laplacian(emy.image) # 見た目ラプラシアンフィルタ
-            emy.image.set_colorkey((0, 0, 0))
-            
-        for bomb in bombs:
-            bomb.speed /= 2 # 動きを遅くする
-            bomb.state = "inactive" # 爆発しない
-            
-        overlay = pg.Surface((WIDTH, HEIGHT))
-        pg.draw.rect(overlay, (255, 255, 0), (0, 0, WIDTH, HEIGHT))
-        overlay.set_alpha(100) # 透明度
-        screen.blit(overlay, [0, 0])
-        pg.display.update()
-        time.sleep(0.05) 
 
+def spawn_enemy(stage: int, tmr: int, emys: pg.sprite.Group):
+    """
+    ステージごとの条件に応じて敵機をスポーンさせる。
+    現在はステージが上がるほど出現間隔を短くする。
+    """
+    interval = max(60, 200 - (stage - 1) * 20)
+    if stage == 1:
+        if tmr % interval == 0: # tmrがintervalの倍数のときに敵機をスポーンさせる
+            emys.add(Enemy())
+        # ここにステージごとのスポーン条件を追加していく
+    # elif stage == 2:
+        #     if tmr % 15
+        #         emys.add(EnemyX())
 
 class Score:
     """
@@ -327,36 +347,10 @@ class Life:
             draw_x=x-(i*self.image.get_width())
             screen.blit(self.image,(draw_x,y))
 
-class Gravity(pg.sprite.Sprite):
-    """
-    重力場に関するクラス
-    """
-    def __init__(self, life: int):
-        """
-        爆弾と敵機を爆発させる重力場を生成する
-        引数 life：爆発時間
-        """
-        super().__init__()
-        self.life = life
-        self.image = pg.Surface((WIDTH, HEIGHT))
-        pg.draw.rect(self.image, (0, 0, 0), (100, 100, 100, 100))
-        self.image.set_alpha(120)
-        self.rect = self.image.get_rect()
-
-    def update(self, screen: pg.Surface):
-        """
-        爆発時間を1減算して0未満になれば重力場を終了する
-        """
-        screen.blit(self.image, self.rect)
-        self.life -= 1
-        if self.life < 0:
-            self.kill()
-
-
 def main():
     pg.display.set_caption("真！こうかとん無双")
     screen = pg.display.set_mode((WIDTH, HEIGHT))
-    bg_img = pg.image.load(f"fig/pg_bg.jpg")
+    bg_imgs = [pg.image.load(path).convert() for path in backgroundImg]
     score = Score()
 
     bird = Bird(3, (900, 400))
@@ -365,7 +359,13 @@ def main():
     exps = pg.sprite.Group()
     emys = pg.sprite.Group()
     life = Life(3)
-    gravi = pg.sprite.Group()
+    items = pg.sprite.Group()
+
+    stage = 1
+    scroll = 2
+    stage_clear = False
+    stage_title_life = 0
+    bg_x = 0
 
     tmr = 0
     clock = pg.time.Clock()
@@ -374,35 +374,97 @@ def main():
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 return 0
-            if event.type == pg.KEYDOWN and event.key == pg.K_e:
-                if score.value >= 20:
-                    score.value -= 20
-                    EMP(emys, bombs, screen)
+
+            if stage_clear and event.type == pg.KEYDOWN and event.key == pg.K_q:
+                life.num = min(life.num + 1, 5)
+                score.value += 50
+                stage += 1
+                stage_clear = False
+                stage_title_life = 60
+                bird.rect.center = (900, 400)
+                for emy in emys:
+                    emy.rect.x -= 120
+                for item in items:
+                    item.rect.x -= 120
+                bg_x = 0
+                continue
+
+            if stage_clear:
+                continue
+
             if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
                 if event.mod & pg.KMOD_LSHIFT: #発動条件：左Shiftキーを押下しながらスペースキー
                     beams.add(*NeoBeam(bird, 5).gen_beams(bird))  # Shift+スペースで複数方向にビームを放つ
                 else:
                     beams.add(Beam(bird))  # スペースキーでビームを放つ
 
-                
-            if event.type == pg.KEYDOWN and event.key == pg.K_RETURN and score.value >= 200:
-                score.value -= 200
-                gravi.add(Gravity(400))
-        screen.blit(bg_img, [0, 0])
+        bg_img = bg_imgs[(stage - 1) % len(bg_imgs)]
+        bg_x = (bg_x - scroll) % WIDTH
+        screen.blit(bg_img, (bg_x - WIDTH, 0))
+        screen.blit(bg_img, (bg_x, 0))
+
+        if stage_clear:
+            overlay = pg.Surface((WIDTH, HEIGHT), pg.SRCALPHA)
+            overlay.fill((0, 0, 0, 160))
+            screen.blit(overlay, (0, 0))
+            font = pg.font.Font(None, 54)
+            lines = [
+                f"STAGE {stage} CLEAR",
+                "Press Q to heal and go next stage",
+            ]
+            for i, text in enumerate(lines):
+                img = font.render(text, True, (255, 255, 255))
+                rect = img.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 30 + i * 50))
+                screen.blit(img, rect)
+            pg.display.update()
+            clock.tick(30)
+            continue
+
+        if stage_title_life > 0:
+            font = pg.font.Font(None, 48)
+            img = font.render(f"STAGE {stage}", True, (255, 255, 255))
+            rect = img.get_rect(center=(WIDTH // 2, 50))
+            screen.blit(img, rect)
+            stage_title_life -= 1
         
 
-        if tmr%200 == 0:  # 200フレームに1回，敵機を出現させる
-            emys.add(Enemy())
+        spawn_enemy(stage, tmr, emys)
+        if tmr%260 == 0:
+            items.add(Item())
+
+        if bird.rect.left <= 0:
+            stage_clear = True
 
         for emy in emys:
             if emy.state == "stop" and tmr%emy.interval == 0:
                 # 敵機が停止状態に入ったら，intervalに応じて爆弾投下
                 bombs.add(Bomb(emy, bird))
 
-        for emy in pg.sprite.groupcollide(emys, beams, True, True).keys():  # ビームと衝突した敵機リスト
-            exps.add(Explosion(emy, 100))  # 爆発エフェクト
-            score.value += 10  # 10点アップ
-            bird.change_img(6, screen)  # こうかとん喜びエフェクト
+        if pg.sprite.spritecollideany(bird, emys):
+            return
+
+        for obj in emys:
+            obj.rect.x -= scroll
+        for obj in bombs:
+            obj.rect.x -= scroll
+        for obj in beams:
+            obj.rect.x -= scroll
+        for obj in exps:
+            obj.rect.x -= scroll
+        for obj in items:
+            obj.rect.x -= scroll
+
+        for item in pg.sprite.spritecollide(bird, items, True):
+            life.num = min(life.num + 1, 5)
+            score.value += 20
+
+        for emy in pg.sprite.groupcollide(emys, beams, False, True).keys():  # ビームと衝突した敵機リスト
+            emy.hp -= 1
+            if emy.hp <= 0:
+                emys.remove(emy)
+                exps.add(Explosion(emy, 100))  # 爆発エフェクト
+                score.value += 10  # 10点アップ
+                bird.change_img(6, screen)  # こうかとん喜びエフェクト
 
         for bomb in pg.sprite.groupcollide(bombs, beams, True, True).keys():  # ビームと衝突した爆弾リスト
             exps.add(Explosion(bomb, 50))  # 爆発エフェクト
@@ -424,13 +486,8 @@ def main():
                         time.sleep(2)
                         return
         
-        for grav in pg.sprite.groupcollide(bombs, gravi, True, False).keys(): #爆弾と当たった重力場リスト
-            exps.add(Explosion(grav, 50))
-            score.value += 1
-
-        for grav in pg.sprite.groupcollide(emys, gravi, True, False).keys(): #敵機と当たった重力場リスト
-            exps.add(Explosion(grav, 50))
-            score.value += 10
+        if tmr % 1800 == 0 and tmr > 0:
+            stage_clear = True
 
         bird.update(key_lst, screen, score)
         beams.update()
@@ -439,8 +496,8 @@ def main():
         emys.draw(screen)
         bombs.update()
         bombs.draw(screen)
-        gravi.update(screen)
-        gravi.draw(screen)
+        items.update()
+        items.draw(screen)
         exps.update()
         exps.draw(screen)
         score.update(screen)
