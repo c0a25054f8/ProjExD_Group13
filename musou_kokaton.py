@@ -8,7 +8,7 @@ import pygame as pg
 
 WIDTH = 1100  # ゲームウィンドウの幅
 HEIGHT = 650  # ゲームウィンドウの高さ
-backgroundImg = ["fig/yougan.png","fig/pg_bg.jpg","fig/pg_bg3.jpg","fig/pg_bg4.jpg","fig/pg_bg5.jpg"] #1,2,3,4,5
+backgroundImg = ["fig/pg_bg.jpg","fig/pg_bg3.jpg","fig/pg_bg4.jpg","fig/yougan.png","fig/pg_bg5.jpg"] #1,2,3,4,5
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
@@ -179,13 +179,13 @@ class Bomb(pg.sprite.Sprite):
 
 class Fire(pg.sprite.Sprite):
     """
-    爆弾に関するクラス
+    炎の玉に関するクラス
     """
     imgs = pg.image.load(f"fig/fire.png")
 
     def __init__(self, emy: "Enemy", bird: Bird):
         """
-        爆弾円Surfaceを生成する
+        炎の玉Surfaceを生成する
         引数1 emy：爆弾を投下する敵機
         引数2 bird：攻撃対象のこうかとん
         """
@@ -417,14 +417,14 @@ def spawn_enemy(stage: int, tmr: int, emys: pg.sprite.Group):
     現在はステージが上がるほど出現間隔を短くする。
     """
     interval = max(60, 200 - (stage - 1) * 20)
-    if stage == 2:
+    if stage == 1:
         if tmr % interval == 0: # tmrがintervalの倍数のときに敵機をスポーンさせる
             emys.add(Enemy())
         # ここにステージごとのスポーン条件を追加していく
     # elif stage == 2:
         #     if tmr % 15
         #         emys.add(EnemyX())
-    elif stage == 1:
+    elif stage == 4:
         if tmr % interval == 0:
             emys.add(Enemy4())
         if tmr % 300 == 0:
