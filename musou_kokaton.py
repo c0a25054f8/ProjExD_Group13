@@ -8,7 +8,7 @@ import pygame as pg
 
 WIDTH = 1100  # ゲームウィンドウの幅
 HEIGHT = 650  # ゲームウィンドウの高さ
-backgroundImg = ["fig/pg_bg.jpg","fig/yougan.png","fig/pg_bg3.jpg","fig/pg_bg4.jpg","fig/pg_bg5.jpg"] #1,2,3,4,5
+backgroundImg = ["fig/yougan.png","fig/pg_bg.jpg","fig/pg_bg3.jpg","fig/pg_bg4.jpg","fig/pg_bg5.jpg"] #1,2,3,4,5
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
@@ -177,6 +177,41 @@ class Bomb(pg.sprite.Sprite):
         # screen.blit(self.image, self.rect)
 
 
+class Fire(pg.sprite.Sprite):
+    """
+    爆弾に関するクラス
+    """
+    imgs = pg.image.load(f"fig/fire.png")
+
+    def __init__(self, emy: "Enemy", bird: Bird):
+        """
+        爆弾円Surfaceを生成する
+        引数1 emy：爆弾を投下する敵機
+        引数2 bird：攻撃対象のこうかとん
+        """
+        super().__init__()
+        self.image = pg.transform.rotozoom(self.imgs, 0, 0.8)
+        self.rect = self.image.get_rect()
+        # 爆弾を投下するemyから見た攻撃対象のbirdの方向を計算
+        self.vx, self.vy = calc_orientation(emy.rect, bird.rect)  
+        self.rect.centerx = emy.rect.centerx
+        self.rect.centery = emy.rect.centery+emy.rect.height//2
+        self.speed = 6
+        self.state = "active"
+
+    def update(self):
+        """
+        火の玉を前進させ、完全に画面外に出たら消去する
+        """
+        self.rect.move_ip(self.speed*self.vx, self.speed*self.vy)
+        if (self.rect.right < 0 or            # 左側の画面外
+            self.rect.left > 1100 or          # 右側の画面外
+            self.rect.bottom < 0 or           # 上側の画面外
+            self.rect.top > 650):             # 下側の画面外
+            
+            self.kill()
+
+
 class Beam(pg.sprite.Sprite):
     """
     ビームに関するクラス
@@ -293,7 +328,6 @@ class Enemy4(pg.sprite.Sprite):
     敵機に関するクラス
     """
     imgs = pg.image.load(f"fig/enemy_4.png")
-    imgs2 = pg.image.load(f"fig/moai.png")
     
     def __init__(self):
         super().__init__()
@@ -358,7 +392,7 @@ class Enemy4_boss(pg.sprite.Sprite):
         super().__init__()
         self.image = pg.transform.rotozoom(self.imgs, 0, 0.8)
         self.rect = self.image.get_rect()
-        self.rect.center = WIDTH + self.rect.width // 2, random.randint(50, HEIGHT - 150)
+        self.rect.center = WIDTH + self.rect.width // 2, HEIGHT // 2
         self.vx, self.vy = -6, 0
         self.bound = random.randint(WIDTH - 300, WIDTH - 150)  # 停止位置
         self.state = "left"  # 左移動状態or停止状態
@@ -495,6 +529,20 @@ def main():
     stage_title_life = 0
     bg_x = 0
 
+    player_skills = {
+        1: False,  # 全方向ビーム
+        2: False,  # スピードアップ（例）
+        3: False,  # 攻撃力アップ（例）
+        4: False,  # バリア（例）
+        5: False,  # 運アップ（例）
+    }
+
+    current_choices = []
+    full_beam_cooldown = 0
+
+    pg.mixer.music.load("fig/進軍.mp3") 
+    pg.mixer.music.play(loops=-1)
+
     tmr = 0
     clock = pg.time.Clock()
     while True:
@@ -503,17 +551,37 @@ def main():
             if event.type == pg.QUIT:
                 return 0
 
-            if stage_clear and event.type == pg.KEYDOWN and event.key == pg.K_1:
+            if stage_clear and event.type == pg.KEYDOWN and event.key in [pg.K_1, pg.K_2, pg.K_3]:
+                # 押されたキーに応じて、選択肢リスト（current_choices）の何番目か特定する
+                if event.key == pg.K_1:
+                    chosen_index = 0
+                elif event.key == pg.K_2:
+                    chosen_index = 1
+                elif event.key == pg.K_3:
+                    chosen_index = 2
+                
+                # 実際に選ばれたスキルの本来の番号（1〜5）を取得する
+                selected_skill_num = current_choices[chosen_index]
+                
+                # --- 変更点5：選ばれたスキルのフラグをTrueにする ---
+                player_skills[selected_skill_num] = True
+                
+                # ※ デバッグ用：何番のスキルが適用されたかコンソールに出す
+                print(f"Skill {selected_skill_num} Activated!")
+                
+                # 次のステージへ行くための共通処理
                 life.num = min(life.num + 1, 5)
                 score.value += 50
                 stage += 1
                 stage_clear = False
                 stage_title_life = 60
                 bird.rect.center = (900, 400)
-                for emy in emys:
-                    emy.rect.x -= 120
-                for item in items:
-                    item.rect.x -= 120
+                
+                emys.empty()
+                bombs.empty()
+                beams.empty()
+                items.empty()
+                tmr = 0
                 bg_x = 0
                 continue
 
@@ -523,10 +591,14 @@ def main():
             if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
                 if event.mod & pg.KMOD_LSHIFT: #発動条件：左Shiftキーを押下しながらスペースキー
                     beams.add(*NeoBeam(bird, 5).gen_beams(bird))  # Shift+スペースで複数方向にビームを放つ
-                elif event.mod & pg.KMOD_RSHIFT:
-                    beams.add(*Full_beam(bird, 5).gen_beams(bird))
                 else:
                     beams.add(Beam(bird))  # スペースキーでビームを放つ
+            
+            if event.type == pg.KEYDOWN and event.key == pg.K_r:
+                # スキルを所持していて、かつクールダウンが0の場合のみ発動
+                if player_skills[1] and full_beam_cooldown == 0:
+                    beams.add(*Full_beam(bird, 8).gen_beams(bird))
+                    full_beam_cooldown = 300
 
         bg_img = bg_imgs[(stage - 1) % len(bg_imgs)]
         bg_x = (bg_x - scroll) % WIDTH
@@ -551,16 +623,20 @@ def main():
                 rect = img.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 150 + i * 50))
                 screen.blit(img, rect)
             
-            # --- 変更点2：3つのスキル選択肢を表示 ---
-            # 今は1つしか完成していないので、2つ目と3つ目はダミー（準備中）にします
-            skills = [
-                "[ 1 ]  Full Beam (Omnidirectional)",  # 完成しているスキル
-                "[ 2 ]  Speed Up (Coming Soon)",       # 未完成のダミー
-                "[ 3 ]  Max HP Up (Coming Soon)",      # 未完成のダミー
-            ]
-            for i, skill_text in enumerate(skills):
-                # 完成している1番だけ色を変える（例：黄色）と分かりやすいです
-                color = (255, 215, 0) if i == 0 else (150, 150, 150)
+            skill_names = {
+                1: "Full Beam (Omnidirectional)",
+                2: "Speed Up (Coming Soon)",
+                3: "Max HP Up (Coming Soon)",
+                4: "Shield (Coming Soon)",
+                5: "Lucky (Coming Soon)",
+            }
+            for i, skill_num in enumerate(current_choices):
+                # i は 0, 1, 2 なので、キーの表示は 1, 2, 3 になる
+                skill_text = f"[ {i + 1} ]  {skill_names[skill_num]}"
+                
+                # スキル1だけ完成しているので、1が含まれる選択肢を黄色にする例
+                color = (255, 215, 0) if skill_num == 1 else (150, 150, 150)
+                
                 img = font_sub.render(skill_text, True, color)
                 rect = img.get_rect(center=(WIDTH // 2, HEIGHT // 2 + i * 60))
                 screen.blit(img, rect)
@@ -585,9 +661,16 @@ def main():
             stage_clear = True
 
         for emy in emys:
-            if emy.state == "stop" and tmr%emy.interval == 0:
-                # 敵機が停止状態に入ったら，intervalに応じて爆弾投下
-                bombs.add(Bomb(emy, bird))
+            if emy.state == "stop" and tmr % emy.interval == 0:
+                
+                # 2. そのタイミングの中で、ボスか雑魚敵かを分ける
+                if isinstance(emy, Enemy4_boss):
+                    # 4面ボスの場合は Fire だけを1個投下
+                    print("★ボスがFireを撃った瞬間！")
+                    bombs.add(Fire(emy, bird)) 
+                else:
+                    # モアイなどの雑魚敵の場合は Bomb だけを1個投下
+                    bombs.add(Bomb(emy, bird))
 
         for emy in pg.sprite.spritecollide(bird, emys, False):
             emy.hp -= 1
@@ -658,6 +741,17 @@ def main():
             # 敵が倒されたとき、それがボス（Enemy4_boss）だった場合
             if isinstance(emy, Enemy4_boss):
                 stage_clear = True  # ステージクリアフラグをONにする
+                current_choices = random.sample([1, 2, 3, 4, 5], 3)
+
+        if player_skills[1] and full_beam_cooldown > 0:
+            font_cd = pg.font.Font(None, 30)
+            # フレーム数を秒数に変換（60で割る）して、小数点第1位まで表示
+            cd_sec = full_beam_cooldown / 60
+            img_cd = font_cd.render(f"SKILL R CD: {cd_sec:.1f}s", True, (255, 0, 0))
+            screen.blit(img_cd, (20, 100))
+
+        if full_beam_cooldown > 0:
+            full_beam_cooldown -= 1
         
         # if tmr % 1800 == 0 and tmr > 0:
         #     stage_clear = True
@@ -682,6 +776,7 @@ def main():
 
 if __name__ == "__main__":
     pg.init()
+    pg.mixer.init()
     main()
     pg.quit()
     sys.exit()
