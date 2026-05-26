@@ -381,8 +381,9 @@ class EnemyLV5_Boss(pg.sprite.Sprite):
         引数 screen：画面Surface
         """
         if self.rect.centerx < self.bound:
-            self.vx = 2
+            self.vx = 0
             self.state = "stop"
+        self.rect.move_ip(self.vx, self.vy)
 class LV1_Boss(pg.sprite.Sprite):
     """
     ステージ1のボスに関するクラス
@@ -442,11 +443,11 @@ def spawn_enemy(stage: int, tmr: int, emys: pg.sprite.Group):
         if tmr > 0 and tmr % (interval * 10) == 0: # ステージ5ではさらに強い敵機を出現させる
             emys.add(EnemyLV5_Boss())
 
-            if tmr < 500:              # タイマーが500未満の時はザコ敵を一定周期で出す
-                if tmr % interval == 0: 
-                    emys.add(Enemy())
-            elif tmr == 500:            # タイマーがちょうど500になった瞬間にボスを1体だけ出す
-                emys.add(LV1_Boss())        
+            # if tmr < 500:              # タイマーが500未満の時はザコ敵を一定周期で出す
+            #     if tmr % interval == 0: 
+            #         emys.add(Enemy())
+            # elif tmr == 500:            # タイマーがちょうど500になった瞬間にボスを1体だけ出す
+            #     emys.add(LV1_Boss())        
     # ここにステージごとのスポーン条件を追加していく
     # elif stage == 2:
         #     if tmr % 15
