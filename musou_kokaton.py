@@ -568,7 +568,7 @@ class Enemy4(pg.sprite.Sprite):
         self.vx, self.vy = -6, 0
         self.bound = random.randint(WIDTH // 2, WIDTH - 150)  # 停止位置
         self.state = "left"  # 左移動状態or停止状態
-        self.interval = random.randint(50, 300)  # 爆弾投下インターバル
+        self.interval = random.randint(60, 300)  # 爆弾投下インターバル
         self.hp = 1
 
     def update(self):
@@ -598,7 +598,7 @@ class Enemy4_1(pg.sprite.Sprite):
         self.vx, self.vy = -6, 0
         self.bound = random.randint(WIDTH // 2, WIDTH - 150)  # 停止位置
         self.state = "left"  # 左移動状態or停止状態
-        self.interval = random.randint(30, 300)  # 爆弾投下インターバル
+        self.interval = random.randint(60, 300)  # 爆弾投下インターバル
         self.hp = 3
 
     def update(self):
@@ -627,7 +627,7 @@ class Enemy4_boss(pg.sprite.Sprite):
         self.vx, self.vy = -6, 0
         self.bound = random.randint(WIDTH - 300, WIDTH - 150)  # 停止位置
         self.state = "left"  # 左移動状態or停止状態
-        self.interval = random.randint(30, 100)  # 爆弾投下インターバル
+        self.interval = random.randint(60, 140)  # 爆弾投下インターバル
         self.hp = 30
 
     def update(self):
@@ -661,7 +661,7 @@ def spawn_enemy(stage: int, tmr: int, emys: pg.sprite.Group):
             if tmr % (interval/2) == 0:
                 emys.add(EnemyLV5_A())
             if tmr % (interval * 2) == 0: # ステージ5ではさらに強い敵機を出現させる
-                for _ in range(3):
+                for _ in range(1):
                     emys.add(EnemyLV5_B())
         if tmr > 0 and tmr % (interval * 10) == 0: # ステージ5ではさらに強い敵機を出現させる
             emys.add(EnemyLV5_Boss())
@@ -833,7 +833,7 @@ def main():
     emys = pg.sprite.Group()
     boss = None
 
-    stage = 1
+    stage = 5
     current_stage = 0
     scroll = 2
     stage_clear = False
