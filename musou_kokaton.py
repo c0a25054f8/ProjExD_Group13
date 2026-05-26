@@ -329,8 +329,8 @@ def spawn_enemy(stage: int, tmr: int, emys: pg.sprite.Group):
         if tmr % interval == 0: # tmrがintervalの倍数のときに敵機をスポーンさせる
             emys.add(Enemy())
         # ここにステージごとのスポーン条件を追加していく
-    elif stage == 2:
-        if tmr % 100 == 0:  # ステージ2では敵が少なめ
+    elif stage == 3:
+        if tmr % 100 == 0:  # ステージ3では敵が少なめ
             emys.add(Enemy())
 
 
@@ -439,7 +439,7 @@ def main():
     stage_clear = False
     stage_title_life = 0
     bg_x = 0
-    boss = None  # ボスはステージ2で生成
+    boss = None  # ボスはステージ3で生成
     # ボス出現遅延（フレーム数）。デフォルト600フレーム（約12秒）
     BOSS_SPAWN_DELAY = 600
 
@@ -499,7 +499,7 @@ def main():
                     selected_skill = None
                     stage_title_life = 60
                     stage_tmr = 0
-                    if stage == 2:
+                    if stage == 3:
                         bird.rect.center = (200, 400)
                     else:
                         bird.rect.center = (900, 400)
@@ -529,15 +529,15 @@ def main():
                         beams.add(Beam(dummy))
 
         bg_img = bg_imgs[(stage - 1) % len(bg_imgs)]
-        # ステージ2のときだけBGMを再生し、離脱時に停止する
+        # ステージ3のときだけBGMを再生し、離脱時に停止する
         if bgm_path:
             try:
-                if stage == 2 and not bgm_playing:
+                if stage == 3 and not bgm_playing:
                     pg.mixer.music.load(bgm_path)
                     pg.mixer.music.set_volume(0.4)
                     pg.mixer.music.play(-1)
                     bgm_playing = True
-                elif stage != 2 and bgm_playing:
+                elif stage != 3 and bgm_playing:
                     pg.mixer.music.stop()
                     bgm_playing = False
             except Exception as e:
@@ -588,8 +588,8 @@ def main():
             screen.blit(img, rect)
             stage_title_life -= 1
         
-        # ステージ2で一定時間経過後にボスをスポーン
-        if stage == 2 and boss is None and stage_tmr > BOSS_SPAWN_DELAY:
+        # ステージ3で一定時間経過後にボスをスポーン
+        if stage == 3 and boss is None and stage_tmr > BOSS_SPAWN_DELAY:
             boss = Boss()
 
         spawn_enemy(stage, tmr, emys)
@@ -702,10 +702,10 @@ def main():
         
         # ステージクリア条件
         if bird.rect.left <= 0:
-            if stage != 2:  # ステージ2ではボス撃墜でクリア
+            if stage != 3:  # ステージ3ではボス撃墜でクリア
                 stage_clear = True
         
-        if stage != 2 and tmr % 1800 == 0 and tmr > 0:  # ステージ2では時間制限でのクリアは無効
+        if stage != 3 and tmr % 1800 == 0 and tmr > 0:  # ステージ3では時間制限でのクリアは無効
             stage_clear = True
 
         bird.update(key_lst, screen, score)
