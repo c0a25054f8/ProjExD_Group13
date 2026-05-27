@@ -12,7 +12,7 @@ pg.mixer.init()
 
 WIDTH = 1100  # ゲームウィンドウの幅
 HEIGHT = 650  # ゲームウィンドウの高さ
-backgroundImg = ["fig/pg_bg.jpg","fig/pg_bg3.jpg","fig/pg_bg4.jpg","fig/yougan.png","fig/pg_bg5.png"] #1,2,3,4,5
+backgroundImg = ["fig/pg_bg.jpg","fig/nightsky01.png","fig/pg_bg4.jpg","fig/yougan.png","fig/pg_bg5.png"] #1,2,3,4,5
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
@@ -763,7 +763,7 @@ class Score:
     def __init__(self):
         self.font = pg.font.Font(None, 50)
         self.color = (0, 0, 255)
-        self.value = 1000
+        self.value = 0
         self.image = self.font.render(f"Score: {self.value}", 0, self.color)
         self.rect = self.image.get_rect()
         self.rect.center = 100, HEIGHT-50
@@ -834,7 +834,7 @@ def main():
     emys = pg.sprite.Group()
     boss = None
 
-    stage = 5
+    stage = 1
     current_stage = 0
     scroll = 2
     stage_clear = False
